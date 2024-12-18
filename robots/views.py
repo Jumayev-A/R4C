@@ -23,7 +23,7 @@ def create_robot(request):
             if not all([serial, model, version, created]):
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
             
-            if not Robot.objects.filter(model=model, version=version).exists():
+            if Robot.objects.filter(model=model, version=version).exists():
                 return JsonResponse({'error': f'Model {model} with version {version} does not exist'}, status=400)
             
             created_date = parse_datetime(created)
@@ -74,9 +74,11 @@ def generate_robot_report(request):
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="robot_report.xlsx"'
 
-    wb.save(response)
-
-    return response
+    if len(wb.sheetnames) > 0:
+        wb[wb.sheetnames[0]].sheet_state = 'visible'
+        wb.save(response)
+        return response
+    return JsonResponse({'info': 'Data not found'}, status=200)
 
 
 

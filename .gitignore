@@ -1,1 +1,9 @@
 env/
+db.sqlite3
+robots/migrations/
+customers/migrations/
+orders/migrations/
+R4C/__pycache__/
+customers/__pycache__/
+orders/__pycache__/
+robots/__pycache__/
