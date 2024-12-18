@@ -1,8 +1,13 @@
 import json
+import datetime
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.dateparse import parse_datetime
 from .models import Robot
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
+from django.http import HttpResponse
+from django.db.models import Count
 
 @csrf_exempt
 def create_robot(request):
@@ -38,3 +43,41 @@ def create_robot(request):
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
     return JsonResponse({'error': 'Invalid method'}, status=405)
+
+
+def generate_robot_report(request):
+    last_week = datetime.datetime.now() - datetime.timedelta(days=7)
+
+    robots_data = Robot.objects.filter(created__gte=last_week).values('model', 'version').annotate(count=Count('id')).order_by('model', 'version')
+
+    wb = Workbook()
+
+    models = set([robot['model'] for robot in robots_data])
+
+    for model in models:
+
+        sheet = wb.create_sheet(title=model)
+        sheet.append(['Модель', 'Версия', 'Количество за неделю'])
+
+        model_data = [robot for robot in robots_data if robot['model'] == model]
+        
+        for robot in model_data:
+            sheet.append([robot['model'], robot['version'], robot['count']])
+            
+        for col in range(1, 4):
+            column_letter = get_column_letter(col)
+            sheet.column_dimensions[column_letter].width = 20
+    
+    if 'Sheet' in wb.sheetnames:
+        del wb['Sheet']
+        
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="robot_report.xlsx"'
+
+    wb.save(response)
+
+    return response
+
+
+
+
